@@ -2,16 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define OFF_TWL_FAT16        0x00012E00
+#define OFF_CTR_BASE         0x0B930000
+#define OFF_CTR_FAT16_O3DS   0x0B95CA00
+#define OFF_CTR_FAT16_N3DS   0x0B95AE00
+
 #define BUFFER_SIZE	(16 * 1024 * 1024)
+#define FIXOFFSET
 // #define NODECRYPT
-// #define FIXOFFSET
 
 void showhelp_exit() {
-	printf(" usage: 3DSFAT16tool [-d|-i] [-o|-n] [NAND] [FAT16] [XORPAD]\n");
+	printf(" usage: 3DSFAT16tool [-d|-i] [NAND] [FAT16] [XORPAD]\n");
 	printf("  -d   Dump FAT16 from NAND file\n");
 	printf("  -i   Inject FAT16 to NAND file\n");
-	printf("  -o   NAND is from O3DS\n");
-	printf("  -n   NAND is from N3DS\n\n");
 	exit(0);
 }
 
@@ -24,80 +27,90 @@ int main( int argc, char** argv )
 	unsigned char* bufxor;
 	int dump;
 	
-	size_t offset = 0x0B930000;
-	size_t size = 0x0;
+	size_t offset;
+	size_t size;
 	
 	printf("\n3DSFAT16tool (C version) by d0k3\n");
 	printf("--------------------------------\n\n");
 	
-	if(argc < 6) showhelp_exit();
+	if(argc < 5) showhelp_exit();
 	if(strcmp(argv[1], "-d") == 0) dump = 1;
 	else if(strcmp(argv[1], "-i") == 0) dump = 0;
 	else showhelp_exit();
-	if(strcmp(argv[2], "-o") == 0) size = 0x2F5D0000;
-	else if(strcmp(argv[2], "-n") == 0) size = 0x41ED0000;
-	else showhelp_exit();
 	
 	if(dump) {
-		printf("dumping & decrypting %s\n from %s\n using %s\n\n", argv[4], argv[3], argv[5]);
+		printf("dumping & decrypting %s\n from %s\n using %s\n\n", argv[3], argv[2], argv[4]);
 	} else {
-		printf("injecting & encrypting %s\n to %s\n using %s\n\n", argv[4], argv[3], argv[5]);
+		printf("injecting & encrypting %s\n to %s\n using %s\n\n", argv[3], argv[2], argv[4]);
 	}
 	
-	fp_xor = fopen(argv[5], "rb");
+	fp_xor = fopen(argv[4], "rb");
 	if(fp_xor == NULL) {
-		printf("open %s failed!\n\n", argv[5]);
+		printf("open %s failed!\n\n", argv[4]);
 		return 0;
 	}
+    
+    // determine size and type of xorpad
+    fseek(fp_xor, 0, SEEK_END);
+    size = ftell(fp_xor);
+    fseek(fp_xor, 0, SEEK_SET);
+    if ((size >= 0x08FB5200) && (size <= 0x09000000)) { // TWLN xorpad
+        size = 0x08FB5200;
+        offset = OFF_TWL_FAT16;
+    } else if ((size >= 0x2F3E3600) && (size <= 0x2F400000)) { // CTRNAND xorpad (fixed/O3DS)
+        size = 0x2F3E3600;
+        offset = OFF_CTR_FAT16_O3DS;
+    } else if ((size >= 0x2F5D0000) && (size <= 0x2F600000)) { // CTRNAND xorpad (unfixed/O3DS)
+        #ifdef FIXOFFSET
+        size = 0x2F3E3600;
+        offset = OFF_CTR_FAT16_O3DS;
+        fseek(fp_xor, OFF_CTR_FAT16_O3DS - OFF_CTR_BASE, SEEK_SET);
+        #else
+        size = 0x2F5D0000;
+        offset = OFF_CTR_BASE;
+        #endif
+    } else if ((size >= 0x41D2D200) && (size <= 0x41E00000)) { // CTRNAND xorpad (fixed/N3DS)
+        size = 0x41D2D200;
+        offset = OFF_CTR_FAT16_N3DS;
+    } else if ((size >= 0x41ED0000) && (size <= 0x41F00000)) { // CTRNAND xorpad (unfixed/N3DS)
+        #ifdef FIXOFFSET
+        size = 0x41D2D200;
+        offset = OFF_CTR_FAT16_N3DS;
+        fseek(fp_xor, OFF_CTR_FAT16_N3DS - OFF_CTR_BASE, SEEK_SET);
+        #else
+        size = 0x41ED0000;
+        offset = OFF_CTR_BASE;
+        #endif
+    } else {
+        printf("xorpad has bad size!\n\n");
+		return 0;
+    }        
+    
 	
 	if(dump) {
+		fp_in = fopen(argv[2], "rb");
+		if(fp_in == NULL) {
+			printf("open %s failed!\n\n", argv[2]);
+			return 0;
+		}
+		fp_out = fopen(argv[3], "wb");
+		if(fp_out == NULL) {
+			printf("open %s failed!\n\n", argv[3]);
+			return 0;
+		}
+		fseek(fp_in, offset, SEEK_SET);
+	} else {
+		fp_out = fopen(argv[2], "r+b");
+		if(fp_out == NULL) {
+			printf("open %s failed!\n\n", argv[2]);
+			return 0;
+		}
 		fp_in = fopen(argv[3], "rb");
 		if(fp_in == NULL) {
 			printf("open %s failed!\n\n", argv[3]);
 			return 0;
 		}
-		fp_out = fopen(argv[4], "wb");
-		if(fp_out == NULL) {
-			printf("open %s failed!\n\n", argv[4]);
-			return 0;
-		}
-		#ifndef FIXOFFSET
-		fseek(fp_in, offset, SEEK_SET);
-		#else
-		if(strcmp(argv[2], "-o") == 0) {
-			fseek(fp_in, offset + 0x2CA00, SEEK_SET);
-			fseek(fp_xor, 0x2CA00, SEEK_SET);
-			size -= 0x2CA00;
-		} else {
-			fseek(fp_in, offset + 0x2AE00, SEEK_SET);
-			fseek(fp_xor, 0x2AE00, SEEK_SET);
-			size -= 0x2AE00;
-		}
-		#endif
-	} else {
-		fp_out = fopen(argv[3], "r+b");
-		if(fp_out == NULL) {
-			printf("open %s failed!\n\n", argv[3]);
-			return 0;
-		}
-		fp_in = fopen(argv[4], "rb");
-		if(fp_in == NULL) {
-			printf("open %s failed!\n\n", argv[4]);
-			return 0;
-		}
-		#ifndef FIXOFFSET
 		fseek(fp_out, offset, SEEK_SET);
-		#else
-		if(strcmp(argv[2], "-o") == 0) {
-			fseek(fp_out, offset + 0x2CA00, SEEK_SET);
-			fseek(fp_xor, 0x2CA00, SEEK_SET);
-			size -= 0x2CA00;
-		} else {
-			fseek(fp_out, offset + 0x2AE00, SEEK_SET);
-			fseek(fp_xor, 0x2AE00, SEEK_SET);
-			size -= 0x2AE00;
-		}
-		#endif
 	}
 	
 	bufenc = (unsigned char*) malloc(BUFFER_SIZE);
