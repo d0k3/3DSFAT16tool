@@ -60,7 +60,7 @@ int main( int argc, char** argv )
     } else if ((size >= 0x2F3E3600) && (size <= 0x2F400000)) { // CTRNAND xorpad (fixed/O3DS)
         size = 0x2F3E3600;
         offset = OFF_CTR_FAT16_O3DS;
-    } else if ((size >= 0x2F5D0000) && (size <= 0x2F600000)) { // CTRNAND xorpad (unfixed/O3DS)
+    } else if ((size >= 0x2F5D0000) && (size <= 0x2F800000)) { // CTRNAND xorpad (unfixed/O3DS)
         #ifdef FIXOFFSET
         size = 0x2F3E3600;
         offset = OFF_CTR_FAT16_O3DS;
@@ -72,7 +72,7 @@ int main( int argc, char** argv )
     } else if ((size >= 0x41D2D200) && (size <= 0x41E00000)) { // CTRNAND xorpad (fixed/N3DS)
         size = 0x41D2D200;
         offset = OFF_CTR_FAT16_N3DS;
-    } else if ((size >= 0x41ED0000) && (size <= 0x41F00000)) { // CTRNAND xorpad (unfixed/N3DS)
+    } else if ((size >= 0x41ED0000) && (size <= 0x42400000)) { // CTRNAND xorpad (unfixed/N3DS)
         #ifdef FIXOFFSET
         size = 0x41D2D200;
         offset = OFF_CTR_FAT16_N3DS;
