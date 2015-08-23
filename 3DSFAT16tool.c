@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define OFF_CTR_FIRM         0x0B130000
 #define OFF_TWL_FAT16        0x00012E00
 #define OFF_CTR_BASE         0x0B930000
 #define OFF_CTR_FAT16_O3DS   0x0B95CA00
@@ -54,7 +55,9 @@ int main( int argc, char** argv )
     fseek(fp_xor, 0, SEEK_END);
     size = ftell(fp_xor);
     fseek(fp_xor, 0, SEEK_SET);
-    if ((size >= 0x08FB5200) && (size <= 0x09000000)) { // TWLN xorpad
+    if (size == 0x00800000) { // FIRM xorpad
+        offset = OFF_CTR_FIRM;
+    } else if ((size >= 0x08FB5200) && (size <= 0x09000000)) { // TWLN xorpad
         size = 0x08FB5200;
         offset = OFF_TWL_FAT16;
     } else if ((size >= 0x2F3E3600) && (size <= 0x2F400000)) { // CTRNAND xorpad (fixed/O3DS)
