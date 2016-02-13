@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define OFF_CTR_FIRM         0x0B130000
 #define OFF_TWL_FAT16        0x00012E00
