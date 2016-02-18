@@ -10,7 +10,7 @@
 #define OFF_CTR_FAT16_N3DS   0x0B95AE00
 
 #define BUFFER_SIZE    (16 * 1024 * 1024)
-#define FIXOFFSET
+// #define FIXOFFSET
 // #define NODECRYPT
 
 void showhelp_exit() {
